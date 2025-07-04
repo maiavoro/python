@@ -1,0 +1,122 @@
+import hashlib
+
+class SHA256Dict:
+    __values: list
+    __keys: list
+    #инициализация
+    def __init__(self):
+        self.__values = []
+        self.__keys = []
+    #два списка для значений и для ключей
+    def _sha256_hash(self, x):
+        if isinstance(x, str):
+            x = x.encode('utf-8')
+        elif isinstance(x, (int, float)):
+            x = str(x).encode('utf-8')
+        elif not isinstance(x, bytes):
+            x = str(x).encode('utf-8')
+        return hashlib.sha256(x).digest()
+    #надо преобразовать все ключи (строку, число, объект) в хэш
+    def __getitem__(self, key):
+        key_hash = self._sha256_hash(self._encode_key(key))
+        for i, my_key in enumerate(self.__keys):
+            if self._sha256_hash(self._encode_key(my_key)) == key_hash:
+                return self.__values[i]
+        raise KeyError(key)
+    #получаем значение или ошибку (ну когда его нет)
+    def __setitem__(self, key, value):
+        key_hash = self._sha256_hash(self._encode_key(key))
+        for i, my_key in enumerate(self.__keys):
+            if self._sha256_hash(self._encode_key(my_key)) == key_hash:
+                self.__values[i] = value
+                return
+        self.__keys.append(key)
+        self.__values.append(value)
+    #добавляем (новая пара) или изменяем значения (обновленное значение) 
+    def __contains__(self, key):
+        try:
+            self[key]
+            return True
+        except KeyError:
+            return False
+#проверяем наличие ключа
+    def _encode_key(self, key):
+        if isinstance(key, str):
+            return key.encode('utf-8')
+        return str(key).encode('utf-8')
+    #преобразовываем ключи в байты
+    def __len__(self):
+        return len(self.__values)
+    #определяет длину словаря (кол-во элементов)
+    def __repr__(self):
+        items = []
+        for i, key in enumerate(self.__keys):
+            items.append(f"{key!r}: {self.__values[i]!r}")
+        return "{" + ", ".join(items) + "}"
+    #выводит наш словарь в формате ключ - значение
+    def clear(self):
+        self.__values = []
+        self.__keys = []
+    #очищает словарь
+    def copy(self):
+        new_dict = SHA256Dict()
+        new_dict.__keys = self.__keys.copy()
+        new_dict.__values = self.__values.copy()
+        return new_dict
+    #копирует имеющийся словарь, получается новый, но такой же
+    @classmethod
+    def fromkeys(cls, seq, value=None):
+        new_dict = cls()
+        for key in seq:
+            new_dict[key] = value
+        return new_dict
+    #создает словарь с кучей ключей и с одинаковыми значениями у них всех
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+    #возвращение значения с дефолтом если нет ключа (None)
+    def items(self):
+        return list(zip(self.__keys, self.__values))
+    #возвращает копию данных в виде кортежей (ключ-значение)
+    def keys(self):
+        return self.__keys.copy()
+    #возвращает копию данных уже в видесписка пар (ключ-значение)
+    def pop(self, key, default=KeyError):
+        key_hash = self._sha256_hash(self._encode_key(key))
+        for i, my_key in enumerate(self.__keys):
+            if self._sha256_hash(self._encode_key(my_key)) == key_hash:
+                value = self.__values.pop(i)
+                self.__keys.pop(i)
+                return value
+        if default is KeyError:
+            raise KeyError(key)
+        return default
+   #удаление ключа и возврат значения
+    def popitem(self):
+        if not self.__keys:
+            raise KeyError("popitem(): dictionary is empty")
+        return (self.__keys.pop(), self.__values.pop())
+  #удаление последнего добавленного элемента  
+    def setdefault(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            self[key] = default
+            return default
+   #получает или устанавливает поведение, те пробует получить значение по ключу, если его нет, добавляет ему значение по дефолту 
+    def update(self, other=None, **kwargs):
+        if other is not None:
+            if hasattr(other, "items"):
+                for key, value in other.items():
+                    self[key] = value
+            else:
+                for key, value in other:
+                    self[key] = value
+        for key, value in kwargs.items():
+            self[key] = value
+   #добавление элементов из другого словаря или списка 
+    def values(self):
+        return self.__values.copy()
+   #возвращает копию списка значений из словаря     
